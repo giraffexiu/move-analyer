@@ -1,0 +1,16 @@
+[package]
+name = "py-move-analyer"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "py_move_analyer"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = "0.25.0"
+move-compiler = { git = "https://github.com/movebit/sui_for_analyzer_2025.git", branch = "analyzer", package = "move-compiler" }
+move-command-line-common = { git = "https://github.com/movebit/sui_for_analyzer_2025.git", branch = "analyzer", package = "move-command-line-common" }
+
+[patch.crates-io]
