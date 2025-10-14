@@ -20,6 +20,10 @@ pub struct FunctionInfo {
     pub is_native: bool,
     #[pyo3(get)]
     pub source_code: String,  // Complete function source code
+    // Location information for source code extraction
+    pub start_line: Option<usize>,
+    pub end_line: Option<usize>,
+    pub file_path: Option<String>,
 }
 
 #[pymethods]
@@ -46,6 +50,10 @@ pub struct StructInfo {
     pub is_native: bool,
     #[pyo3(get)]
     pub source_code: String,  // Complete struct source code
+    // Location information for source code extraction
+    pub start_line: Option<usize>,
+    pub end_line: Option<usize>,
+    pub file_path: Option<String>,
 }
 
 #[pymethods]

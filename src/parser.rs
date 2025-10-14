@@ -14,6 +14,120 @@ use crate::types::{ModuleInfo, FunctionInfo, StructInfo, SymbolExtractor};
 fn format_var(var: &move_compiler::parser::ast::Var) -> String {
     format!("{}", var.0)
 }
+/// Extract source code from content between specified lines
+fn extract_source_code_from_content(content: &str, start_line: usize, end_line: usize) -> String {
+    let lines: Vec<&str> = content.lines().collect();
+    
+    if start_line == 0 || end_line == 0 || start_line > lines.len() || end_line > lines.len() || start_line > end_line {
+        return String::new();
+    }
+    
+    // Convert to 0-based indexing
+    let start_idx = start_line - 1;
+    let end_idx = end_line - 1;
+    
+    let extracted_lines = &lines[start_idx..=end_idx];
+    extracted_lines.join("\n")
+}
+
+/// Find function definition in source code and return its line range
+fn find_function_location(content: &str, function_name: &str, _visibility: &str) -> Option<(usize, usize)> {
+    let lines: Vec<&str> = content.lines().collect();
+    let mut start_line = None;
+    let mut brace_count = 0;
+    let mut in_function = false;
+    
+    // Create possible function signature patterns
+    let patterns = vec![
+        format!("fun {}(", function_name),
+        format!("public fun {}(", function_name),
+        format!("public(package) fun {}(", function_name),
+        format!("entry fun {}(", function_name),
+        format!("entry public fun {}(", function_name),
+        format!("public entry fun {}(", function_name),
+    ];
+    
+    for (line_idx, line) in lines.iter().enumerate() {
+        let trimmed = line.trim();
+        
+        // Look for function definition
+        if !in_function {
+            for pattern in &patterns {
+                if trimmed.contains(pattern) {
+                    start_line = Some(line_idx + 1); // Convert to 1-based
+                    in_function = true;
+                    break;
+                }
+            }
+        }
+        
+        if in_function {
+            // Count braces to find function end
+            for ch in trimmed.chars() {
+                match ch {
+                    '{' => brace_count += 1,
+                    '}' => {
+                        brace_count -= 1;
+                        if brace_count == 0 {
+                            return start_line.map(|start| (start, line_idx + 1));
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            
+            // Handle single-line functions (native functions)
+            if trimmed.ends_with(';') && brace_count == 0 {
+                return start_line.map(|start| (start, line_idx + 1));
+            }
+        }
+    }
+    
+    None
+}
+
+/// Find struct definition in source code and return its line range
+fn find_struct_location(content: &str, struct_name: &str) -> Option<(usize, usize)> {
+    let lines: Vec<&str> = content.lines().collect();
+    let mut start_line = None;
+    let mut brace_count = 0;
+    let mut in_struct = false;
+    
+    let pattern = format!("struct {}", struct_name);
+    
+    for (line_idx, line) in lines.iter().enumerate() {
+        let trimmed = line.trim();
+        
+        // Look for struct definition
+        if !in_struct && trimmed.contains(&pattern) {
+            start_line = Some(line_idx + 1); // Convert to 1-based
+            in_struct = true;
+        }
+        
+        if in_struct {
+            // Count braces to find struct end
+            for ch in trimmed.chars() {
+                match ch {
+                    '{' => brace_count += 1,
+                    '}' => {
+                        brace_count -= 1;
+                        if brace_count == 0 {
+                            return start_line.map(|start| (start, line_idx + 1));
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            
+            // Handle single-line structs or structs ending with semicolon
+            if trimmed.ends_with(';') && brace_count == 0 {
+                return start_line.map(|start| (start, line_idx + 1));
+            }
+        }
+    }
+    
+    None
+}
 
 /// Parse a single Move file and extract module information
 pub fn parse_move_file(file_path: &Path) -> PyResult<Option<ModuleInfo>> {
@@ -43,7 +157,7 @@ pub fn parse_move_file(file_path: &Path) -> PyResult<Option<ModuleInfo>> {
             // Extract module information from definitions
             for definition in &definitions {
                 if let move_compiler::parser::ast::Definition::Module(module) = definition {
-                    let extractor = extract_symbols_from_ast(&definitions);
+                    let extractor = extract_symbols_from_ast_with_source(&definitions, &content, Some(file_path.to_str().unwrap_or("")));
                     
                     let module_name = format!("{}::{}", 
                         module.address.as_ref().map(|a| format!("{}", a)).unwrap_or_else(|| "unknown".to_string()),
@@ -90,7 +204,8 @@ pub fn extract_dependencies(module: &move_compiler::parser::ast::ModuleDefinitio
 /// Extract symbols from AST definitions with source code
 pub fn extract_symbols_from_ast_with_source(
     modules: &[move_compiler::parser::ast::Definition], 
-    _source_content: &str
+    source_content: &str,
+    file_path: Option<&str>
 ) -> SymbolExtractor {
     let mut functions = Vec::new();
     let mut structs = Vec::new();
@@ -127,11 +242,19 @@ pub fn extract_symbols_from_ast_with_source(
                         
                         let return_type = format!("{:?}", func.signature.return_type).replace("\"", "");
                         
-                        // Generate function source code from AST information
-                        let source_code = generate_function_source_code(func, &visibility);
+                        let func_name = func.name.0.to_string();
+                        
+                        // Find function location and extract actual source code
+                        let (source_code, start_line, end_line) = if let Some((start, end)) = find_function_location(source_content, &func_name, &visibility) {
+                            let extracted_code = extract_source_code_from_content(source_content, start, end);
+                            (extracted_code, Some(start), Some(end))
+                        } else {
+                            // Fallback to generated source code
+                            (generate_function_source_code(func, &visibility), None, None)
+                        };
                         
                         let function_info = FunctionInfo {
-                            name: func.name.0.to_string(),
+                            name: func_name,
                             module: module_name.clone(),
                             visibility,
                             parameters,
@@ -139,6 +262,9 @@ pub fn extract_symbols_from_ast_with_source(
                             is_entry: func.entry.is_some(),
                             is_native: matches!(func.body.value, move_compiler::parser::ast::FunctionBody_::Native),
                             source_code,
+                            start_line,
+                            end_line,
+                            file_path: file_path.map(|s| s.to_string()),
                         };
                         
                         functions.push(function_info);
@@ -167,16 +293,27 @@ pub fn extract_symbols_from_ast_with_source(
                             .map(|ability| format!("{:?}", ability.value))
                             .collect();
                         
-                        // Generate struct source code from AST information
-                        let source_code = generate_struct_source_code(struct_def);
+                        let struct_name = struct_def.name.0.to_string();
+                        
+                        // Find struct location and extract actual source code
+                        let (source_code, start_line, end_line) = if let Some((start, end)) = find_struct_location(source_content, &struct_name) {
+                            let extracted_code = extract_source_code_from_content(source_content, start, end);
+                            (extracted_code, Some(start), Some(end))
+                        } else {
+                            // Fallback to generated source code
+                            (generate_struct_source_code(struct_def), None, None)
+                        };
                         
                         let struct_info = StructInfo {
-                            name: struct_def.name.0.to_string(),
+                            name: struct_name,
                             module: module_name.clone(),
                             fields,
                             abilities,
                             is_native: matches!(struct_def.fields, move_compiler::parser::ast::StructFields::Native(_)),
                             source_code,
+                            start_line,
+                            end_line,
+                            file_path: file_path.map(|s| s.to_string()),
                         };
                         
                         structs.push(struct_info);
@@ -291,10 +428,6 @@ fn generate_struct_source_code(struct_def: &move_compiler::parser::ast::StructDe
 }
 
 /// Extract symbols from AST definitions (backward compatibility)
-pub fn extract_symbols_from_ast(modules: &[move_compiler::parser::ast::Definition]) -> SymbolExtractor {
-    extract_symbols_from_ast_with_source(modules, "")
-}
-
 /// Parse Move source code and return the result as a string
 pub fn parse_move_content(content: &str) -> PyResult<String> {
     let file_hash = FileHash::new(content);
@@ -341,7 +474,7 @@ pub fn extract_symbols_from_content(content: &str) -> PyResult<SymbolExtractor> 
     
     match parse_file_string(&mut env, file_hash, content, None) {
         Ok(parsed) => {
-            let extractor = extract_symbols_from_ast(&*parsed);
+            let extractor = extract_symbols_from_ast_with_source(&*parsed, content, None);
             Ok(extractor)
         }
         Err(err) => Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(

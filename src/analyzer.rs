@@ -450,15 +450,15 @@ impl AdvancedProjectAnalyzer {
             for func in functions {
                 if let Some(ref module_filter) = module_filter {
                     if func.module.contains(module_filter) {
-                        results.push(format!("filepath: {}\nsourcecode: {}::{}", 
+                        results.push(format!("filepath: {}\nsourcecode:\n{}", 
                                            self.get_module_file_path(&func.module).unwrap_or_else(|| "unknown".to_string()),
-                                           func.module, func.name));
+                                           func.source_code));
                         found_exact = true;
                     }
                 } else {
-                    results.push(format!("filepath: {}\nsourcecode: {}::{}", 
+                    results.push(format!("filepath: {}\nsourcecode:\n{}", 
                                        self.get_module_file_path(&func.module).unwrap_or_else(|| "unknown".to_string()),
-                                       func.module, func.name));
+                                       func.source_code));
                     found_exact = true;
                 }
             }
@@ -469,15 +469,15 @@ impl AdvancedProjectAnalyzer {
             for struct_info in structs {
                 if let Some(ref module_filter) = module_filter {
                     if struct_info.module.contains(module_filter) {
-                        results.push(format!("filepath: {}\nsourcecode: {}::{}", 
+                        results.push(format!("filepath: {}\nsourcecode:\n{}", 
                                            self.get_module_file_path(&struct_info.module).unwrap_or_else(|| "unknown".to_string()),
-                                           struct_info.module, struct_info.name));
+                                           struct_info.source_code));
                         found_exact = true;
                     }
                 } else {
-                    results.push(format!("filepath: {}\nsourcecode: {}::{}", 
+                    results.push(format!("filepath: {}\nsourcecode:\n{}", 
                                        self.get_module_file_path(&struct_info.module).unwrap_or_else(|| "unknown".to_string()),
-                                       struct_info.module, struct_info.name));
+                                       struct_info.source_code));
                     found_exact = true;
                 }
             }
@@ -496,14 +496,14 @@ impl AdvancedProjectAnalyzer {
                     for func in functions {
                         if let Some(ref module_filter) = module_filter {
                             if func.module.contains(module_filter) {
-                                results.push(format!("filepath: {}\nsourcecode: {}::{}", 
+                                results.push(format!("filepath: {}\nsourcecode:\n{}", 
                                                    self.get_module_file_path(&func.module).unwrap_or_else(|| "unknown".to_string()),
-                                                   func.module, func.name));
+                                                   func.source_code));
                             }
                         } else {
-                            results.push(format!("filepath: {}\nsourcecode: {}::{}", 
+                            results.push(format!("filepath: {}\nsourcecode:\n{}", 
                                                self.get_module_file_path(&func.module).unwrap_or_else(|| "unknown".to_string()),
-                                               func.module, func.name));
+                                               func.source_code));
                         }
                     }
                 }
@@ -518,14 +518,14 @@ impl AdvancedProjectAnalyzer {
                     for struct_info in structs {
                         if let Some(ref module_filter) = module_filter {
                             if struct_info.module.contains(module_filter) {
-                                results.push(format!("filepath: {}\nsourcecode: {}::{}", 
+                                results.push(format!("filepath: {}\nsourcecode:\n{}", 
                                                    self.get_module_file_path(&struct_info.module).unwrap_or_else(|| "unknown".to_string()),
-                                                   struct_info.module, struct_info.name));
+                                                   struct_info.source_code));
                             }
                         } else {
-                            results.push(format!("filepath: {}\nsourcecode: {}::{}", 
+                            results.push(format!("filepath: {}\nsourcecode:\n{}", 
                                                self.get_module_file_path(&struct_info.module).unwrap_or_else(|| "unknown".to_string()),
-                                               struct_info.module, struct_info.name));
+                                               struct_info.source_code));
                         }
                     }
                 }
