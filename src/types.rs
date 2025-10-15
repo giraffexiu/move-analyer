@@ -19,7 +19,7 @@ pub struct FunctionInfo {
     #[pyo3(get)]
     pub is_native: bool,
     #[pyo3(get)]
-    pub source_code: String,  // Complete function source code
+    pub source_code: String, // Complete function source code
     // Location information for source code extraction
     pub start_line: Option<usize>,
     pub end_line: Option<usize>,
@@ -29,8 +29,10 @@ pub struct FunctionInfo {
 #[pymethods]
 impl FunctionInfo {
     fn __repr__(&self) -> String {
-        format!("FunctionInfo(name='{}', module='{}', visibility='{}')", 
-                self.name, self.module, self.visibility)
+        format!(
+            "FunctionInfo(name='{}', module='{}', visibility='{}')",
+            self.name, self.module, self.visibility
+        )
     }
 }
 
@@ -49,7 +51,7 @@ pub struct StructInfo {
     #[pyo3(get)]
     pub is_native: bool,
     #[pyo3(get)]
-    pub source_code: String,  // Complete struct source code
+    pub source_code: String, // Complete struct source code
     // Location information for source code extraction
     pub start_line: Option<usize>,
     pub end_line: Option<usize>,
@@ -59,8 +61,10 @@ pub struct StructInfo {
 #[pymethods]
 impl StructInfo {
     fn __repr__(&self) -> String {
-        format!("StructInfo(name='{}', module='{}', fields={:?})", 
-                self.name, self.module, self.fields)
+        format!(
+            "StructInfo(name='{}', module='{}', fields={:?})",
+            self.name, self.module, self.fields
+        )
     }
 }
 
@@ -85,9 +89,15 @@ pub struct ModuleInfo {
 #[pymethods]
 impl ModuleInfo {
     fn __repr__(&self) -> String {
-        format!("ModuleInfo(name='{}', address='{}', file='{}', deps={}, funcs={}, structs={})", 
-                self.name, self.address, self.file_path, self.dependencies.len(), 
-                self.functions.len(), self.structs.len())
+        format!(
+            "ModuleInfo(name='{}', address='{}', file='{}', deps={}, funcs={}, structs={})",
+            self.name,
+            self.address,
+            self.file_path,
+            self.dependencies.len(),
+            self.functions.len(),
+            self.structs.len()
+        )
     }
 }
 
@@ -105,35 +115,43 @@ pub struct SymbolExtractor {
 #[pymethods]
 impl SymbolExtractor {
     pub fn get_functions_by_name(&self, name: &str) -> Vec<FunctionInfo> {
-        self.functions.iter()
+        self.functions
+            .iter()
             .filter(|f| f.name == name)
             .cloned()
             .collect()
     }
-    
+
     pub fn get_structs_by_name(&self, name: &str) -> Vec<StructInfo> {
-        self.structs.iter()
+        self.structs
+            .iter()
             .filter(|s| s.name == name)
             .cloned()
             .collect()
     }
-    
+
     pub fn get_functions_by_module(&self, module: &str) -> Vec<FunctionInfo> {
-        self.functions.iter()
+        self.functions
+            .iter()
             .filter(|f| f.module == module)
             .cloned()
             .collect()
     }
-    
+
     pub fn get_structs_by_module(&self, module: &str) -> Vec<StructInfo> {
-        self.structs.iter()
+        self.structs
+            .iter()
             .filter(|s| s.module == module)
             .cloned()
             .collect()
     }
-    
+
     fn __repr__(&self) -> String {
-        format!("SymbolExtractor(modules={}, functions={}, structs={})", 
-                self.modules.len(), self.functions.len(), self.structs.len())
+        format!(
+            "SymbolExtractor(modules={}, functions={}, structs={})",
+            self.modules.len(),
+            self.functions.len(),
+            self.structs.len()
+        )
     }
 }
